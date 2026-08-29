@@ -34,13 +34,3 @@ Setup completo e minimalista do Hyprland configurado nativamente em **Lua**, com
 * **`Print`**: Tirar Print da Tela Inteira
 * **`Shift + Print`**: Tirar Print de Área Selecionada
 * **`Super + [1-10]`**: Trocar de Workspace (pressione a mesma tecla para voltar)
-
----
-
-## 🔄 Como Sincronizar / Fazer Backup
-
-Para atualizar seu repositório no GitHub com as últimas alterações do seu sistema:
-
-```bash
-~/dotfiles/sync.sh
-```
