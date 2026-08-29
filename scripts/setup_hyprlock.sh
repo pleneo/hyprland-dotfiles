@@ -1,0 +1,89 @@
+#!/bin/bash
+set -e
+
+echo "[1/3] Instalando hyprlock..."
+sudo pacman -S --noconfirm --needed hyprlock
+
+echo "[2/3] Configurando hyprlock.conf..."
+cat > /home/lenin/.config/hypr/hyprlock.conf << "EOF"
+# Hyprlock Configuration with Pywal and Blur Integration
+
+background {
+    monitor =
+    path = screenshot
+    blur_passes = 3
+    blur_size = 8
+    noise = 0.0117
+    contrast = 0.8916
+    brightness = 0.8172
+    vibrancy = 0.1696
+    vibrancy_darkness = 0.0
+}
+
+# RELÓGIO DIGITAL
+label {
+    monitor =
+    text = cmd[update:1000] echo "$TIME"
+    color = rgba(255, 255, 255, 0.95)
+    font_size = 80
+    font_family = JetBrainsMono Nerd Font Bold
+    position = 0, 150
+    halign = center
+    valign = center
+    shadow_passes = 2
+    shadow_size = 4
+}
+
+# DATA EM PORTUGUÊS
+label {
+    monitor =
+    text = cmd[update:1000] LC_TIME=pt_BR.UTF-8 date +"%A, %d de %B"
+    color = rgba(200, 220, 255, 0.85)
+    font_size = 20
+    font_family = JetBrainsMono Nerd Font
+    position = 0, 70
+    halign = center
+    valign = center
+    shadow_passes = 2
+}
+
+# MENSAGEM DO USUÁRIO
+label {
+    monitor =
+    text = 󰌑 Bem-vindo de volta, $USER
+    color = rgba(255, 255, 255, 0.75)
+    font_size = 14
+    font_family = JetBrainsMono Nerd Font
+    position = 0, -10
+    halign = center
+    valign = center
+}
+
+# CAIXA DE ENTRADA DE SENHA
+input-field {
+    monitor =
+    size = 280, 50
+    outline_thickness = 2
+    dots_size = 0.28
+    dots_spacing = 0.25
+    dots_center = true
+    dots_rounding = -1
+    outer_color = rgba(33, 204, 255, 0.8)
+    inner_color = rgba(20, 20, 30, 0.7)
+    font_color = rgb(240, 240, 240)
+    fade_on_empty = false
+    placeholder_text = <span foreground="##aaaaaa">Digite sua senha...</span>
+    hide_input = false
+    rounding = 25
+    check_color = rgba(0, 255, 153, 0.8)
+    fail_color = rgba(255, 51, 102, 0.8)
+    fail_text = <i>Senha Incorreta ($ATTEMPTS)</i>
+    fail_transition = 300
+    position = 0, -80
+    halign = center
+    valign = center
+    shadow_passes = 2
+}
+EOF
+
+echo "[3/3] Concluído com sucesso!"

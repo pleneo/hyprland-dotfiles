@@ -1,0 +1,57 @@
+@import "/home/lenin/.cache/wal/colors-waybar.css";
+
+* {
+    background-image: none;
+    box-shadow: none;
+    font-family: "JetBrainsMono Nerd Font", sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+window {
+    background-color: rgba(10, 12, 18, 0.82);
+}
+
+button {
+    color: @foreground;
+    background-color: rgba(26, 27, 38, 0.7);
+    border: 2px solid @color2;
+    border-radius: 26px;
+    margin: 10px;
+    padding: 10px;
+    background-repeat: no-repeat;
+    background-position: center 30%;
+    background-size: 34%;
+    transition: all 0.2s ease-in-out;
+}
+
+button:hover {
+    background-color: rgba(45, 50, 70, 0.95);
+    border-color: @color4;
+    color: @color2;
+}
+
+button:focus {
+    background-color: rgba(55, 60, 85, 0.95);
+    border-color: @color4;
+}
+
+#lock {
+    background-image: image(url("/usr/share/wlogout/icons/lock.png"));
+}
+
+#logout {
+    background-image: image(url("/usr/share/wlogout/icons/logout.png"));
+}
+
+#suspend {
+    background-image: image(url("/usr/share/wlogout/icons/suspend.png"));
+}
+
+#reboot {
+    background-image: image(url("/usr/share/wlogout/icons/reboot.png"));
+}
+
+#shutdown {
+    background-image: image(url("/usr/share/wlogout/icons/shutdown.png"));
+}
