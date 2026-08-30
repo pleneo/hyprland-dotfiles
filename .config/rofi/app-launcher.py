@@ -4,6 +4,44 @@ import glob
 import subprocess
 import urllib.parse
 import sys
+import json
+
+USAGE_FILE = os.path.expanduser("~/.cache/rofi-app-usage.json")
+WOFI_HISTORY = os.path.expanduser("~/.cache/wofi-drun")
+
+def load_app_usage():
+    usage = {}
+    # Carregar do JSON se existir
+    if os.path.exists(USAGE_FILE):
+        try:
+            with open(USAGE_FILE, "r", encoding="utf-8") as f:
+                usage = json.load(f)
+                return usage
+        except Exception:
+            pass
+
+    # Se ainda não existe, migrar do histórico antigo do wofi
+    if os.path.exists(WOFI_HISTORY):
+        try:
+            with open(WOFI_HISTORY, "r", encoding="utf-8") as f:
+                for line in f:
+                    parts = line.strip().split(" ", 1)
+                    if len(parts) == 2:
+                        try:
+                            usage[parts[1].strip()] = int(parts[0])
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+    return usage
+
+def save_app_usage(usage):
+    try:
+        os.makedirs(os.path.dirname(USAGE_FILE), exist_ok=True)
+        with open(USAGE_FILE, "w", encoding="utf-8") as f:
+            json.dump(usage, f, indent=2)
+    except Exception:
+        pass
 
 def get_installed_apps():
     apps = {}
@@ -43,9 +81,15 @@ def get_installed_apps():
 
 def main():
     apps = get_installed_apps()
-    
-    # Ordenar aplicativos alfabeticamente
-    sorted_names = sorted(apps.keys(), key=lambda s: s.lower())
+    usage = load_app_usage()
+
+    # Função para obter a contagem de uso de cada aplicativo
+    def get_count(app_name):
+        f = apps[app_name]["file"]
+        return usage.get(f, 0) + usage.get(app_name, 0)
+
+    # Ordenar por frequência de uso (mais acessados primeiro), depois alfabeticamente
+    sorted_names = sorted(apps.keys(), key=lambda s: (-get_count(s), s.lower()))
 
     # Formatar entradas para o Rofi com ícones
     rofi_input_lines = []
@@ -72,14 +116,18 @@ def main():
     if not selection:
         sys.exit(0)
 
-    # 1. Se for um aplicativo instalado, abre o aplicativo
+    # 1. Se for um aplicativo instalado, registra o uso e abre o aplicativo
     if selection in apps:
         desktop_file = apps[selection]["file"]
         desktop_name = os.path.basename(desktop_file).replace(".desktop", "")
+
+        # Incrementar contagem de uso
+        usage[desktop_file] = usage.get(desktop_file, 0) + 1
+        save_app_usage(usage)
+
         try:
             subprocess.Popen(["gtk-launch", desktop_name])
         except Exception:
-            # Fallback para executar o comando
             cmd_exec = apps[selection]["exec"].split("%")[0].strip()
             subprocess.Popen(cmd_exec, shell=True)
         sys.exit(0)
@@ -88,7 +136,6 @@ def main():
     encoded_query = urllib.parse.quote_plus(selection)
     search_url = f"https://www.google.com/search?q={encoded_query}"
     
-    # Abre no Floorp / Navegador padrão
     subprocess.Popen(["xdg-open", search_url])
 
 if __name__ == "__main__":
