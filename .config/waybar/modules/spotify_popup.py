@@ -5,6 +5,17 @@ from gi.repository import Gtk, Gdk, GLib, GdkPixbuf
 import subprocess
 import os
 import sys
+import threading
+import math
+import random
+import cairo
+
+# Importar helper da API do Spotify
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import spotify_api
+except Exception:
+    spotify_api = None
 
 # Definir nome do programa para o Hyprland reconhecer a classe na hora
 GLib.set_prgname("spotify-island-popup")
@@ -51,29 +62,56 @@ def format_time(seconds):
     except Exception:
         return "0:00"
 
+class SparkleParticle:
+    def __init__(self, x, y, angle, speed, color, is_star=False):
+        self.x = x
+        self.y = y
+        self.vx = math.cos(angle) * speed
+        self.vy = math.sin(angle) * speed
+        self.life = 22
+        self.max_life = 22
+        self.color = color
+        self.size = random.uniform(2.2, 3.8)
+        self.is_star = is_star
+
+    def update(self):
+        self.x += self.vx
+        self.y += self.vy
+        # Leve desaceleração para efeito suave de purpurina
+        self.vx *= 0.94
+        self.vy *= 0.94
+        self.life -= 1
+        return self.life > 0
+
 class SpotifyIslandPopup(Gtk.Window):
     def __init__(self):
         super().__init__(title="Spotify Island Popup")
         self.set_role("spotify-island-popup")
         self.set_decorated(False)
         self.set_resizable(False)
-        self.set_default_size(440, 140)
+        self.set_default_size(480, 150)
         self.can_close_on_focus_out = False
         self.is_seeking = False
+        self.is_vol_seeking = False
         self.total_duration = 0
+        self.current_track_id = ""
+        self.is_liked = False
+        self.last_volume = 1.0
+        self.sparkle_particles = []
+        self.sparkle_anim_id = None
 
         self.connect("destroy", on_destroy)
         self.connect("key-press-event", self.on_key_press)
         self.connect("focus-out-event", self.on_focus_out)
 
-        # Habilitar fechamento por clique fora após 500ms (evita fechar ao mover mouse da barra)
+        # Habilitar fechamento por clique fora após 500ms
         GLib.timeout_add(500, self.enable_focus_out)
 
         # CSS Styling Premium
         css = b"""
         window {
             background-color: rgba(18, 19, 27, 0.96);
-            border-radius: 22px;
+            border-radius: 20px;
             border: 2px solid rgba(29, 185, 84, 0.6);
         }
         .main-container {
@@ -115,6 +153,23 @@ class SpotifyIslandPopup(Gtk.Window):
         .btn-close:hover {
             color: #f38ba8;
         }
+        .btn-like {
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            padding: 0 4px;
+            color: #585b70;
+            transition: color 0.15s ease;
+        }
+        .btn-like:hover {
+            color: #a6adc8;
+        }
+        .btn-like.liked {
+            color: #1db954;
+        }
+        .btn-like.liked:hover {
+            color: #1ed760;
+        }
         .btn-ctrl {
             background: rgba(255, 255, 255, 0.08);
             color: #cdd6f4;
@@ -142,6 +197,16 @@ class SpotifyIslandPopup(Gtk.Window):
         }
         .btn-play:hover {
             background: #1ed760;
+        }
+        .vol-btn {
+            background: transparent;
+            border: none;
+            color: #9399b2;
+            font-size: 13px;
+            padding: 0 2px;
+        }
+        .vol-btn:hover {
+            color: #1db954;
         }
         scale {
             padding: 0;
@@ -178,6 +243,9 @@ class SpotifyIslandPopup(Gtk.Window):
             min-width: 10px;
             margin: -3px 0;
         }
+        .vol-scale {
+            min-width: 65px;
+        }
         """
         style_provider = Gtk.CssProvider()
         style_provider.load_from_data(css)
@@ -198,7 +266,7 @@ class SpotifyIslandPopup(Gtk.Window):
         main_hbox.pack_start(self.cover_image, False, False, 0)
 
         # Coluna de Informações e Controles à Direita
-        right_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        right_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         main_hbox.pack_start(right_vbox, True, True, 0)
 
         # Topo: "󰓇  Spotify" + Botão Fechar ✕
@@ -216,20 +284,31 @@ class SpotifyIslandPopup(Gtk.Window):
 
         right_vbox.pack_start(top_bar, False, False, 0)
 
-        # Nome da Música
+        # Linha de Título + Botão de Like
+        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.title_lbl = Gtk.Label(label="Carregando...")
         self.title_lbl.get_style_context().add_class("title-label")
         self.title_lbl.set_halign(Gtk.Align.START)
         self.title_lbl.set_ellipsize(3)
-        self.title_lbl.set_max_width_chars(26)
-        right_vbox.pack_start(self.title_lbl, False, False, 0)
+        self.title_lbl.set_max_width_chars(24)
+        title_box.pack_start(self.title_lbl, True, True, 0)
+
+        # Botão de Like (Coração)
+        self.btn_like = Gtk.Button(label="󰋑")
+        self.btn_like.get_style_context().add_class("btn-like")
+        self.btn_like.set_tooltip_text("Curtir Música")
+        self.btn_like.connect("clicked", self.on_like_clicked)
+        self.btn_like.connect("draw", self.on_btn_like_draw)
+        title_box.pack_end(self.btn_like, False, False, 0)
+
+        right_vbox.pack_start(title_box, False, False, 0)
 
         # Artista • Álbum
         self.artist_lbl = Gtk.Label(label="")
         self.artist_lbl.get_style_context().add_class("artist-label")
         self.artist_lbl.set_halign(Gtk.Align.START)
         self.artist_lbl.set_ellipsize(3)
-        self.artist_lbl.set_max_width_chars(30)
+        self.artist_lbl.set_max_width_chars(32)
         right_vbox.pack_start(self.artist_lbl, False, False, 0)
 
         # Linha do Tempo Arrastável (Gtk.Scale Interativo)
@@ -240,17 +319,17 @@ class SpotifyIslandPopup(Gtk.Window):
         self.timeline_scale.connect("change-value", self.on_scale_change)
         right_vbox.pack_start(self.timeline_scale, False, False, 2)
 
-        # Barra Inferior: Horário + Botões de Controle
-        bottom_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        # Barra Inferior: Horário + Controles + Volume
+        bottom_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         
         # Horários
         self.time_lbl = Gtk.Label(label="0:00 / 0:00")
         self.time_lbl.get_style_context().add_class("time-label")
         bottom_hbox.pack_start(self.time_lbl, False, False, 0)
 
-        # Controles alinhados à direita
-        ctrl_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        ctrl_hbox.set_halign(Gtk.Align.END)
+        # Controles Centrais
+        ctrl_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        ctrl_hbox.set_halign(Gtk.Align.CENTER)
 
         btn_prev = Gtk.Button(label="󰒮")
         btn_prev.get_style_context().add_class("btn-ctrl")
@@ -267,8 +346,26 @@ class SpotifyIslandPopup(Gtk.Window):
         ctrl_hbox.pack_start(btn_prev, False, False, 0)
         ctrl_hbox.pack_start(self.btn_play, False, False, 0)
         ctrl_hbox.pack_start(btn_next, False, False, 0)
+        bottom_hbox.pack_start(ctrl_hbox, True, True, 0)
 
-        bottom_hbox.pack_end(ctrl_hbox, False, False, 0)
+        # Seção de Volume à Direita (Exclusivo do Spotify)
+        vol_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        vol_hbox.set_halign(Gtk.Align.END)
+
+        self.btn_vol = Gtk.Button(label="󰕾")
+        self.btn_vol.get_style_context().add_class("vol-btn")
+        self.btn_vol.connect("clicked", self.toggle_mute)
+        vol_hbox.pack_start(self.btn_vol, False, False, 0)
+
+        self.vol_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+        self.vol_scale.get_style_context().add_class("vol-scale")
+        self.vol_scale.set_draw_value(False)
+        self.vol_scale.connect("button-press-event", lambda w, e: setattr(self, 'is_vol_seeking', True))
+        self.vol_scale.connect("button-release-event", self.on_vol_release)
+        self.vol_scale.connect("change-value", self.on_vol_change)
+        vol_hbox.pack_start(self.vol_scale, False, False, 0)
+
+        bottom_hbox.pack_end(vol_hbox, False, False, 0)
         right_vbox.pack_start(bottom_hbox, False, False, 0)
 
         self.update_data()
@@ -308,6 +405,146 @@ class SpotifyIslandPopup(Gtk.Window):
             self.time_lbl.set_text(f"{cur_str} / {tot_str}")
         return False
 
+    def on_vol_change(self, widget, scroll, value):
+        val_float = min(1.0, max(0.0, float(value) / 100.0))
+        subprocess.run(["playerctl", "--player=spotify", "volume", f"{val_float:.2f}"])
+        self.update_vol_icon(val_float)
+        return False
+
+    def on_vol_release(self, widget, event):
+        self.is_vol_seeking = False
+        val_float = min(1.0, max(0.0, self.vol_scale.get_value() / 100.0))
+        subprocess.run(["playerctl", "--player=spotify", "volume", f"{val_float:.2f}"])
+        self.update_vol_icon(val_float)
+
+    def update_vol_icon(self, vol):
+        if vol <= 0.01:
+            self.btn_vol.set_label("󰝟")
+        elif vol < 0.33:
+            self.btn_vol.set_label("󰕿")
+        elif vol < 0.66:
+            self.btn_vol.set_label("󰖀")
+        else:
+            self.btn_vol.set_label("󰕾")
+
+    def toggle_mute(self, btn):
+        try:
+            cur_vol = float(subprocess.check_output(["playerctl", "--player=spotify", "volume"]).decode().strip())
+            if cur_vol > 0.01:
+                self.last_volume = cur_vol
+                subprocess.run(["playerctl", "--player=spotify", "volume", "0"])
+                self.vol_scale.set_value(0)
+                self.update_vol_icon(0)
+            else:
+                target = self.last_volume if self.last_volume > 0.05 else 0.8
+                subprocess.run(["playerctl", "--player=spotify", "volume", str(target)])
+                self.vol_scale.set_value(target * 100.0)
+                self.update_vol_icon(target)
+        except Exception:
+            pass
+
+    def burst_sparkles(self):
+        alloc = self.btn_like.get_allocation()
+        cx = alloc.width / 2.0
+        cy = alloc.height / 2.0
+        colors = [
+            (0.114, 0.725, 0.329),  # #1db954 (Verde Spotify)
+            (0.118, 0.843, 0.376),  # #1ed760 (Verde Brilhante)
+            (0.651, 0.957, 0.773),  # #a6f4c5 (Menta Claro / Brilho)
+            (0.505, 0.780, 0.517),  # #81c784 (Verde Pastel)
+            (1.000, 1.000, 0.800),  # Brilho dourado claro
+        ]
+        self.sparkle_particles.clear()
+        num_particles = 14
+        for i in range(num_particles):
+            angle = (i / num_particles) * 2 * math.pi + random.uniform(-0.18, 0.18)
+            speed = random.uniform(1.8, 3.2)
+            color = random.choice(colors)
+            is_star = (i % 2 == 0)
+            self.sparkle_particles.append(SparkleParticle(cx, cy, angle, speed, color, is_star))
+
+        if self.sparkle_anim_id is None:
+            self.sparkle_anim_id = GLib.timeout_add(16, self.animate_sparkles)
+        self.btn_like.queue_draw()
+
+    def animate_sparkles(self):
+        alive = []
+        for p in self.sparkle_particles:
+            if p.update():
+                alive.append(p)
+        self.sparkle_particles = alive
+        self.btn_like.queue_draw()
+        if not self.sparkle_particles:
+            self.sparkle_anim_id = None
+            return False
+        return True
+
+    def on_btn_like_draw(self, btn, cr):
+        if not self.sparkle_particles:
+            return False
+        cr.save()
+        cr.reset_clip()
+        for p in self.sparkle_particles:
+            progress = p.life / p.max_life
+            alpha = max(0.0, min(1.0, progress ** 1.3))
+            r, g, b = p.color
+            cr.set_source_rgba(r, g, b, alpha)
+            size = p.size * (0.5 + 0.5 * progress)
+
+            if p.is_star:
+                cr.move_to(p.x, p.y - size * 1.6)
+                cr.line_to(p.x + size * 0.4, p.y)
+                cr.line_to(p.x, p.y + size * 1.6)
+                cr.line_to(p.x - size * 0.4, p.y)
+                cr.close_path()
+                cr.fill()
+            else:
+                cr.arc(p.x, p.y, size, 0, 2 * math.pi)
+                cr.fill()
+        cr.restore()
+        return False
+
+    def on_like_clicked(self, btn):
+        if not spotify_api or not self.current_track_id:
+            return
+        # Troca otimista imediata na UI
+        self.is_liked = not self.is_liked
+        self.update_like_ui(self.is_liked)
+        if self.is_liked:
+            self.burst_sparkles()
+
+        # Executa na API em segundo plano
+        def run_like():
+            success = spotify_api.set_track_liked(self.current_track_id, self.is_liked)
+            if not success:
+                # Reverte se falhou
+                self.is_liked = not self.is_liked
+                GLib.idle_add(self.update_like_ui, self.is_liked)
+
+        threading.Thread(target=run_like, daemon=True).start()
+
+    def update_like_ui(self, liked):
+        ctx = self.btn_like.get_style_context()
+        self.btn_like.set_label("󰋑")
+        if liked:
+            self.btn_like.set_tooltip_text("Remover dos Favoritos")
+            if not ctx.has_class("liked"):
+                ctx.add_class("liked")
+        else:
+            self.btn_like.set_tooltip_text("Curtir Música")
+            if ctx.has_class("liked"):
+                ctx.remove_class("liked")
+
+    def check_track_liked_async(self, track_id):
+        if not spotify_api or not track_id:
+            return
+        def fetch():
+            liked = spotify_api.is_track_liked(track_id)
+            if track_id == self.current_track_id:
+                self.is_liked = liked
+                GLib.idle_add(self.update_like_ui, liked)
+        threading.Thread(target=fetch, daemon=True).start()
+
     def exec_player(self, action):
         subprocess.run(["playerctl", "--player=spotify", action])
         GLib.timeout_add(100, self.update_data)
@@ -319,18 +556,35 @@ class SpotifyIslandPopup(Gtk.Window):
                 "--player=spotify",
                 "metadata",
                 "--format",
-                "{{status}};;;{{artist}};;;{{title}};;;{{album}};;;{{position}};;;{{mpris:length}};;;{{duration(position)}};;;{{duration(mpris:length)}}"
+                "{{status}};;;{{artist}};;;{{title}};;;{{album}};;;{{position}};;;{{mpris:length}};;;{{duration(position)}};;;{{duration(mpris:length)}};;;{{mpris:trackid}};;;{{volume}}"
             ]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1)
             if res.returncode == 0 and res.stdout.strip():
                 parts = res.stdout.strip().split(";;;")
                 if len(parts) >= 8:
-                    status, artist, title, album, pos_raw, len_raw, pos_str, len_str = parts
+                    status, artist, title, album, pos_raw, len_raw, pos_str, len_str = parts[:8]
+                    track_id = parts[8] if len(parts) > 8 else ""
+                    vol_raw = parts[9] if len(parts) > 9 else "1.0"
+
                     self.title_lbl.set_text(title)
                     self.artist_lbl.set_text(f"{artist} • {album}" if album else artist)
 
                     # Play / Pause Icon
                     self.btn_play.set_label("󰏤" if status == "Playing" else "󰐊")
+
+                    # Verificar Like quando troca de música
+                    if track_id and track_id != self.current_track_id:
+                        self.current_track_id = track_id
+                        self.check_track_liked_async(track_id)
+
+                    # Volume do Spotify
+                    if not self.is_vol_seeking:
+                        try:
+                            vol_f = float(vol_raw)
+                            self.vol_scale.set_value(vol_f * 100.0)
+                            self.update_vol_icon(vol_f)
+                        except Exception:
+                            pass
 
                     # Progresso da Barra Interativa
                     try:

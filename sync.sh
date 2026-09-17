@@ -8,7 +8,9 @@ DOTFILES_DIR="$HOME/dotfiles"
 echo "[1/4] Atualizando cópias das configurações..."
 mkdir -p "$DOTFILES_DIR/.config"/{hypr,waybar,rofi,mako,wlogout,alacritty,fish} "$DOTFILES_DIR/wallpapers" "$DOTFILES_DIR/scripts"
 
-cp -r ~/.config/hypr/hyprland.lua ~/.config/hypr/hyprland.conf ~/.config/hypr/lua ~/.config/hypr/hyprlock.conf "$DOTFILES_DIR/.config/hypr/" 2>/dev/null || true
+cp -r ~/.config/hypr/hyprland.lua ~/.config/hypr/hyprland.conf ~/.config/hypr/lua ~/.config/hypr/hyprlock.conf ~/.config/hypr/hypr-ipc-proxy.py "$DOTFILES_DIR/.config/hypr/" 2>/dev/null || true
+mkdir -p "$DOTFILES_DIR/.config/systemd/user"
+cp ~/.config/systemd/user/hypr-ipc-proxy.service "$DOTFILES_DIR/.config/systemd/user/" 2>/dev/null || true
 cp -r ~/.config/waybar/config ~/.config/waybar/style.css ~/.config/waybar/modules "$DOTFILES_DIR/.config/waybar/" 2>/dev/null || true
 cp -r ~/.config/rofi/* "$DOTFILES_DIR/.config/rofi/" 2>/dev/null || true
 cp -r ~/.config/mako/config "$DOTFILES_DIR/.config/mako/" 2>/dev/null || true

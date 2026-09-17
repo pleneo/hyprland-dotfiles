@@ -31,8 +31,8 @@ hl.window_rule({
     pin = true,
     rounding = 20,
     border_size = 2,
-    move = "740 68",
-    size = "440 148",
+    move = "720 68",
+    size = "480 156",
 })
 
 -- Smart Gaps Workspaces
