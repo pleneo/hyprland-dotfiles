@@ -72,10 +72,15 @@ A ilha do Spotify na barra superior se expande em um card flutuante interativo c
 
 ---
 
-## 🔄 Sincronização Automática
+## 🔄 Sincronização com o GitHub
 
-Para salvar e enviar qualquer modificação futura diretamente para o GitHub:
+O repositório utiliza commits semânticos e descritivos. Você pode passar a mensagem de alteração diretamente como argumento ou deixar que o script solicite/gere o escopo automaticamente:
 
 ```bash
+# Passando uma mensagem descritiva (Recomendado):
+~/dotfiles/sync.sh "feat(wallpapers): novo wallpaper do minecraft"
+~/dotfiles/sync.sh "fix(waybar): ajuste no espacamento dos icones"
+
+# Ou sem argumentos (o script pedirá a mensagem ou gerará o escopo automaticamente):
 ~/dotfiles/sync.sh
 ```
