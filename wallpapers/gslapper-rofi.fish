@@ -11,7 +11,7 @@ set SELECAO (
         set thumb "$WALL_DIR/$raw.png"
         set clean (string replace -a '-' ' ' -- $raw | string replace -i ' moewalls com' '' | string replace -i ' moewalls' '' | string trim)
         printf "%s\0icon\x1f%s\n" "$clean" "$thumb"
-    end | rofi -dmenu -i -show-icons -p "󰐊 Wallpaper" -theme "$THEME_FILE"
+    end | sort -f | rofi -dmenu -i -show-icons -p "󰐊 Wallpaper" -theme "$THEME_FILE"
 )
 
 test -z "$SELECAO" && exit 0

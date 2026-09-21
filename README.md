@@ -11,14 +11,33 @@ Setup completo, moderno e minimalista do Hyprland configurado nativamente em **L
 | **Compositor** | Hyprland (Lua) | Modular (`monitors`, `variables`, `decorations`, `keybinds`, `windowrules`, `autostart`) |
 | **Ponte IPC** | `hypr-ipc-proxy` | Serviço systemd em Python que traduz chamadas legacy do Waybar para a arquitetura Lua |
 | **Status Bar** | Waybar | Pílula central com Calendário BR, Clima 4 dias, workspaces clicáveis e Spotify Island |
-| **Spotify Island** | Dynamic Island + GTK3 | Capa ao vivo, linha do tempo arrastável, volume exclusivo e botão de like dinâmico |
+| **Spotify Island** | Dynamic Island + GTK3 | Capa ao vivo, linha do tempo arrastável, volume exclusivo e botão de like com purpurina |
 | **Lockscreen** | Hyprlock | Blur dinâmico da tela atual e input glow com cores do Pywal |
 | **Display Manager** | SDDM Astronaut | Tema nítido Totoro Stargazing |
 | **Lançador** | Rofi Spotlight | Busca de aplicativos com ordenação por frequência de uso + busca direta no Google |
 | **Clipboard** | Cliphist + Rofi | Histórico flutuante com suporte a texto e imagens (`Super + C`) |
 | **Menu de Energia**| Wlogout | Glassmorphism com 5 botões centrais organizados e cores dinâmicas |
 | **Shell Prompt** | Starship + Fish | Diretório com ícones, branch git limpo e sem poluição visual |
-| **Wallpaper** | Gslapper + Pywal | Papéis de parede animados 1080p + paleta de cores dinâmica |
+| **Wallpaper** | Gslapper + Pywal | Papéis de parede animados 1080p em loop + galeria visual ordenada alfabeticamente |
+
+---
+
+## 🎬 Wallpapers Animados & Script de Automação
+
+O gerenciamento de wallpapers conta com uma galeria interativa (`Super + W`) e um script para automatizar a adição de novos vídeos:
+
+* **Galeria Visual (`Super + W`):** Grade de miniaturas lado a lado, ordenada **alfabeticamente de forma automática** (`flow: horizontal`), com troca dinâmica de cores via **Pywal**.
+* **Script de Automação (`Wallpapers/script/create-wallpaper.sh`):**
+  * **Detecção Automática:** Lê dimensões e taxa de bits com `ffprobe`.
+  * **Downscale Inteligente:** Redimensiona vídeos maiores que 1080p (4K, 1440p) para 1920x1080.
+  * **Compressão Sem Perda:** Detecta vídeos 1080p pesados (>15 MB ou alto bitrate) e comprime com H.264 CRF 22, cortando o áudio inútil e reduzindo o peso em mais de 50%.
+  * **Geração de Miniatura:** Extrai frame `.png` em alta definição usado pelo Rofi e pelo Pywal.
+  * **Limpeza de Nomes:** Remove sufixos como `.1920x1080` para manter títulos limpos.
+
+```bash
+# Como adicionar um novo wallpaper automaticamente:
+~/Downloads/Wallpapers/script/create-wallpaper.sh ~/Downloads/meu-video.mp4
+```
 
 ---
 

@@ -18,7 +18,8 @@ cp -r ~/.config/wlogout/* "$DOTFILES_DIR/.config/wlogout/" 2>/dev/null || true
 cp -r ~/.config/alacritty/* "$DOTFILES_DIR/.config/alacritty/" 2>/dev/null || true
 cp ~/.config/fish/config.fish "$DOTFILES_DIR/.config/fish/" 2>/dev/null || true
 cp ~/.config/starship.toml "$DOTFILES_DIR/.config/" 2>/dev/null || true
-cp ~/Downloads/Wallpapers/*.fish "$DOTFILES_DIR/wallpapers/" 2>/dev/null || true
+cp ~/Downloads/Wallpapers/*.fish ~/Downloads/Wallpapers/*.rasi "$DOTFILES_DIR/wallpapers/" 2>/dev/null || true
+cp -r ~/Downloads/Wallpapers/script "$DOTFILES_DIR/wallpapers/" 2>/dev/null || true
 cp ~/Documents/setup_*.sh "$DOTFILES_DIR/scripts/" 2>/dev/null || true
 
 echo "[2/4] Verificando status do Git..."

@@ -1,0 +1,90 @@
+@import "/home/lenin/.cache/wal/colors-rofi-dark.rasi"
+
+* {
+    font: "JetBrainsMono Nerd Font 10";
+    background-color: transparent;
+    text-color: @foreground;
+}
+
+window {
+    width: 900px;
+    background-color: @background;
+    border: 2px solid;
+    border-color: @selected-normal-background;
+    border-radius: 16px;
+    padding: 16px;
+    anchor: center;
+    location: center;
+}
+
+mainbox {
+    spacing: 16px;
+    children: [ inputbar, listview ];
+}
+
+inputbar {
+    enabled: true;
+    padding: 8px 14px;
+    background-color: #1a161d;
+    border: 1px solid;
+    border-color: @selected-normal-background;
+    border-radius: 10px;
+    children: [ prompt, entry ];
+}
+
+prompt {
+    font: "JetBrainsMono Nerd Font Bold 11";
+    text-color: @selected-normal-background;
+    margin: 0px 8px 0px 0px;
+}
+
+entry {
+    placeholder: "Pesquisar wallpaper...";
+    placeholder-color: #7c7086;
+    text-color: @foreground;
+}
+
+listview {
+    layout: vertical;
+    flow: horizontal;
+    columns: 3;
+    lines: 2;
+    cycle: true;
+    spacing: 16px;
+    dynamic: true;
+    scrollbar: false;
+}
+
+element {
+    orientation: vertical;
+    padding: 10px;
+    border: 2px solid;
+    border-color: transparent;
+    border-radius: 12px;
+    background-color: #1a161d;
+    cursor: pointer;
+}
+
+element selected {
+    background-color: @selected-normal-background;
+    border-color: @selected-active-background;
+    border-radius: 12px;
+    text-color: @foreground;
+}
+
+element-icon {
+    size: 140px;
+    horizontal-align: 0.5;
+    vertical-align: 0.5;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+element-text {
+    font: "JetBrainsMono Nerd Font Bold 10";
+    horizontal-align: 0.5;
+    vertical-align: 0.5;
+    padding: 8px 0px 2px 0px;
+    text-color: inherit;
+    cursor: pointer;
+}
