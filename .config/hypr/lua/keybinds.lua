@@ -32,6 +32,7 @@ hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("/home/lenin/.config/rofi/cliphist.sh
 hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("loginctl terminate-user ''"))
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("hyprlock"))
 hl.bind(mainMod .. " + O", hl.dsp.exec_cmd("killall -SIGUSR2 waybar"))
+hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("/home/lenin/.config/hypr/scripts/toggle-swaync.sh"))
 
 -- Gaps Toggle
 hl.bind(mainMod .. " + SHIFT + G", hl.dsp.exec_cmd("hyprctl --batch 'keyword general:gaps_out 5;keyword general:gaps_in 3'"))

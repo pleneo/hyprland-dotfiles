@@ -40,6 +40,7 @@
         //"pulseaudio",
         "wireplumber",
         "tray",
+        "custom/notification",
         "custom/power"
     ],
 
@@ -189,6 +190,7 @@
         "interval": 2,
         "on-click": "/home/lenin/.config/waybar/modules/spotify_popup.py",
         "on-click-right": "playerctl --player=spotify play-pause",
+        "on-click-middle": "playerctl --player=spotify shuffle Toggle",
         "on-scroll-up": "playerctl --player=spotify next",
         "on-scroll-down": "playerctl --player=spotify previous"
     },
@@ -200,6 +202,7 @@
         "interval": 2,
         "on-click": "/home/lenin/.config/waybar/modules/spotify_popup.py",
         "on-click-right": "playerctl --player=spotify play-pause",
+        "on-click-middle": "playerctl --player=spotify shuffle Toggle",
         "on-scroll-up": "playerctl --player=spotify next",
         "on-scroll-down": "playerctl --player=spotify previous"
     },
@@ -215,6 +218,27 @@
         "escape": true,
         //"exec": "~/.config/waybar/mediaplayer.py" // Script in resources folder
         // "exec": "~/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
+    },
+
+    "custom/notification": {
+        "tooltip": false,
+        "format": "{icon}",
+        "format-icons": {
+            "notification": " 󰂚<span foreground='#f38ba8'><sup></sup></span> ",
+            "none": " 󰂚 ",
+            "dnd-notification": " 󰂛<span foreground='#f38ba8'><sup></sup></span> ",
+            "dnd-none": " 󰂛 ",
+            "inhibited-notification": " 󰂚<span foreground='#f38ba8'><sup></sup></span> ",
+            "inhibited-none": " 󰂚 ",
+            "dnd-inhibited-notification": " 󰂛<span foreground='#f38ba8'><sup></sup></span> ",
+            "dnd-inhibited-none": " 󰂛 "
+        },
+        "return-type": "json",
+        "exec-if": "which swaync-client",
+        "exec": "swaync-client -swb",
+        "on-click": "/home/lenin/.config/hypr/scripts/control_center.py",
+        "on-click-right": "swaync-client -d -sw",
+        "escape": true
     },
 
     "custom/power": {

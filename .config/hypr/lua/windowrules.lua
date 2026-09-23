@@ -38,3 +38,23 @@ hl.window_rule({
 -- Smart Gaps Workspaces
 hl.workspace_rule({ workspace = "w[tv1-10]", gaps_out = 5, gaps_in = 3 })
 hl.workspace_rule({ workspace = "f[1]", gaps_out = 5, gaps_in = 3 })
+
+-- SwayNC & Control Center Layer Rules (Hardware Blur & Shadow)
+hl.layer_rule({
+    name = "control-center-blur",
+    match = { namespace = "^control-center$" },
+    blur = true,
+    ignore_alpha = 0.5,
+})
+hl.layer_rule({
+    name = "swaync-control-center-blur",
+    match = { namespace = "^swaync-control-center$" },
+    blur = true,
+    ignore_alpha = 0.5,
+})
+hl.layer_rule({
+    name = "swaync-notification-blur",
+    match = { namespace = "^swaync-notification-window$" },
+    blur = true,
+    ignore_alpha = 0.5,
+})

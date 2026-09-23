@@ -84,6 +84,20 @@ def get_spotify_info():
         if not title.strip():
             return None
 
+        # Obter shuffle e loop do Spotify
+        shuffle_val = "Off"
+        loop_val = "None"
+        try:
+            s_res = subprocess.run(["playerctl", "--player=spotify", "shuffle"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=0.4)
+            shuffle_val = s_res.stdout.strip() or "Off"
+        except Exception:
+            pass
+        try:
+            l_res = subprocess.run(["playerctl", "--player=spotify", "loop"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=0.4)
+            loop_val = l_res.stdout.strip() or "None"
+        except Exception:
+            pass
+
         return {
             "status": status.strip(),
             "artist": artist.strip() or "Desconhecido",
@@ -92,6 +106,8 @@ def get_spotify_info():
             "art_url": art_url.strip(),
             "pos": pos.strip() or "0:00",
             "length": length.strip() or "0:00",
+            "shuffle": shuffle_val,
+            "loop": loop_val,
         }
     except Exception:
         return None
@@ -125,6 +141,16 @@ else:
     if info['album']:
         tooltip_lines.append(f"<b>Álbum:</b> {info['album']}")
     tooltip_lines.append(f"<b>Tempo:</b> {info['pos']} / {info['length']} ({info['status']})")
+
+    modes = []
+    if info.get("shuffle", "").lower() == "on":
+        modes.append("󰒝 Aleatório")
+    if info.get("loop", "").lower() == "playlist":
+        modes.append("󰑖 Repetir Playlist")
+    elif info.get("loop", "").lower() == "track":
+        modes.append("󰑘 Repetir 1")
+    if modes:
+        tooltip_lines.append(f"<b>Modo:</b> {' • '.join(modes)}")
 
     tooltip = "\n".join(tooltip_lines)
     css_class = "playing" if info["status"] == "Playing" else "paused"

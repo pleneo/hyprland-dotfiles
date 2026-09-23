@@ -89,7 +89,7 @@ class SpotifyIslandPopup(Gtk.Window):
         self.set_role("spotify-island-popup")
         self.set_decorated(False)
         self.set_resizable(False)
-        self.set_default_size(480, 150)
+        self.set_default_size(500, 150)
         self.can_close_on_focus_out = False
         self.is_seeking = False
         self.is_vol_seeking = False
@@ -97,6 +97,8 @@ class SpotifyIslandPopup(Gtk.Window):
         self.current_track_id = ""
         self.is_liked = False
         self.last_volume = 1.0
+        self.shuffle_state = "Off"
+        self.loop_state = "None"
         self.sparkle_particles = []
         self.sparkle_anim_id = None
 
@@ -175,14 +177,28 @@ class SpotifyIslandPopup(Gtk.Window):
             color: #cdd6f4;
             border: none;
             border-radius: 20px;
-            min-width: 32px;
-            min-height: 32px;
+            min-width: 30px;
+            min-height: 30px;
             padding: 0;
-            font-size: 14px;
+            font-size: 13px;
         }
         .btn-ctrl:hover {
             background: rgba(29, 185, 84, 0.3);
             color: #1db954;
+        }
+        .btn-ctrl.dimmed {
+            color: #6c7086;
+        }
+        .btn-ctrl.dimmed:hover {
+            color: #cdd6f4;
+        }
+        .btn-ctrl.active {
+            color: #1db954;
+            background: rgba(29, 185, 84, 0.22);
+        }
+        .btn-ctrl.active:hover {
+            color: #1ed760;
+            background: rgba(29, 185, 84, 0.35);
         }
         .btn-play {
             background: #1db954;
@@ -327,9 +343,15 @@ class SpotifyIslandPopup(Gtk.Window):
         self.time_lbl.get_style_context().add_class("time-label")
         bottom_hbox.pack_start(self.time_lbl, False, False, 0)
 
-        # Controles Centrais
-        ctrl_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        # Controles Centrais: Shuffle + Prev + Play/Pause + Next + Repeat
+        ctrl_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
         ctrl_hbox.set_halign(Gtk.Align.CENTER)
+
+        self.btn_shuffle = Gtk.Button(label="󰒝")
+        self.btn_shuffle.get_style_context().add_class("btn-ctrl")
+        self.btn_shuffle.get_style_context().add_class("dimmed")
+        self.btn_shuffle.set_tooltip_text("Aleatório: Desativado")
+        self.btn_shuffle.connect("clicked", self.on_shuffle_clicked)
 
         btn_prev = Gtk.Button(label="󰒮")
         btn_prev.get_style_context().add_class("btn-ctrl")
@@ -343,9 +365,17 @@ class SpotifyIslandPopup(Gtk.Window):
         btn_next.get_style_context().add_class("btn-ctrl")
         btn_next.connect("clicked", lambda b: self.exec_player("next"))
 
+        self.btn_repeat = Gtk.Button(label="󰑖")
+        self.btn_repeat.get_style_context().add_class("btn-ctrl")
+        self.btn_repeat.get_style_context().add_class("dimmed")
+        self.btn_repeat.set_tooltip_text("Repetir: Desativado")
+        self.btn_repeat.connect("clicked", self.on_repeat_clicked)
+
+        ctrl_hbox.pack_start(self.btn_shuffle, False, False, 0)
         ctrl_hbox.pack_start(btn_prev, False, False, 0)
         ctrl_hbox.pack_start(self.btn_play, False, False, 0)
         ctrl_hbox.pack_start(btn_next, False, False, 0)
+        ctrl_hbox.pack_start(self.btn_repeat, False, False, 0)
         bottom_hbox.pack_start(ctrl_hbox, True, True, 0)
 
         # Seção de Volume à Direita (Exclusivo do Spotify)
@@ -545,6 +575,68 @@ class SpotifyIslandPopup(Gtk.Window):
                 GLib.idle_add(self.update_like_ui, liked)
         threading.Thread(target=fetch, daemon=True).start()
 
+    def update_shuffle_ui(self, state):
+        ctx = self.btn_shuffle.get_style_context()
+        if str(state).strip().lower() == "on":
+            if not ctx.has_class("active"):
+                ctx.add_class("active")
+            if ctx.has_class("dimmed"):
+                ctx.remove_class("dimmed")
+            self.btn_shuffle.set_tooltip_text("Aleatório: Ativado (Clique para desativar)")
+        else:
+            if ctx.has_class("active"):
+                ctx.remove_class("active")
+            if not ctx.has_class("dimmed"):
+                ctx.add_class("dimmed")
+            self.btn_shuffle.set_tooltip_text("Aleatório: Desativado (Clique para ativar)")
+
+    def update_repeat_ui(self, state):
+        ctx = self.btn_repeat.get_style_context()
+        st = str(state).strip().lower()
+        if st == "track":
+            self.btn_repeat.set_label("󰑘")
+            if not ctx.has_class("active"):
+                ctx.add_class("active")
+            if ctx.has_class("dimmed"):
+                ctx.remove_class("dimmed")
+            self.btn_repeat.set_tooltip_text("Repetir: Faixa atual (1) (Clique para desativar)")
+        elif st == "playlist":
+            self.btn_repeat.set_label("󰑖")
+            if not ctx.has_class("active"):
+                ctx.add_class("active")
+            if ctx.has_class("dimmed"):
+                ctx.remove_class("dimmed")
+            self.btn_repeat.set_tooltip_text("Repetir: Playlist inteira (Clique para repetir 1)")
+        else:  # "none"
+            self.btn_repeat.set_label("󰑖")
+            if ctx.has_class("active"):
+                ctx.remove_class("active")
+            if not ctx.has_class("dimmed"):
+                ctx.add_class("dimmed")
+            self.btn_repeat.set_tooltip_text("Repetir: Desativado (Clique para repetir playlist)")
+
+    def on_shuffle_clicked(self, btn):
+        new_state = "Off" if self.shuffle_state.lower() == "on" else "On"
+        self.shuffle_state = new_state
+        self.update_shuffle_ui(new_state)
+        subprocess.Popen(["playerctl", "--player=spotify", "shuffle", new_state])
+        GLib.timeout_add(250, self.update_data)
+
+    def on_repeat_clicked(self, btn):
+        cur = self.loop_state.lower()
+        # Ciclo: None -> Playlist -> Track (1) -> None
+        if cur == "none":
+            next_loop = "Playlist"
+        elif cur == "playlist":
+            next_loop = "Track"
+        else:  # track
+            next_loop = "None"
+
+        self.loop_state = next_loop
+        self.update_repeat_ui(next_loop)
+        subprocess.Popen(["playerctl", "--player=spotify", "loop", next_loop])
+        GLib.timeout_add(250, self.update_data)
+
     def exec_player(self, action):
         subprocess.run(["playerctl", "--player=spotify", action])
         GLib.timeout_add(100, self.update_data)
@@ -576,6 +668,23 @@ class SpotifyIslandPopup(Gtk.Window):
                     if track_id and track_id != self.current_track_id:
                         self.current_track_id = track_id
                         self.check_track_liked_async(track_id)
+
+                    # Shuffle e Repeat
+                    try:
+                        s_out = subprocess.check_output(["playerctl", "--player=spotify", "shuffle"], stderr=subprocess.DEVNULL, timeout=0.3).decode().strip()
+                        if s_out:
+                            self.shuffle_state = s_out
+                            self.update_shuffle_ui(s_out)
+                    except Exception:
+                        pass
+
+                    try:
+                        l_out = subprocess.check_output(["playerctl", "--player=spotify", "loop"], stderr=subprocess.DEVNULL, timeout=0.3).decode().strip()
+                        if l_out:
+                            self.loop_state = l_out
+                            self.update_repeat_ui(l_out)
+                    except Exception:
+                        pass
 
                     # Volume do Spotify
                     if not self.is_vol_seeking:
@@ -618,3 +727,4 @@ if __name__ == "__main__":
     win = SpotifyIslandPopup()
     win.show_all()
     Gtk.main()
+
